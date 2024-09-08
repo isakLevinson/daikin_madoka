@@ -137,16 +137,23 @@ class DaikinMadokaClimate(ClimateEntity):
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
+        #_LOGGER.debug("target_temp")
+        _LOGGER.debug("target_temp mode:%d ", self.hvac_mode)
+        _LOGGER.debug("target_temp set:%d", self.controller.set_point.status.heating_set_point)
 
         if self.controller.set_point.status is None:
+            _LOGGER.warning("setpoint is None")
             return None
 
         value = None
 
         if self.hvac_mode == HVACMode.HEAT:
+            _LOGGER.debug("target point HEAT")
             value = self.controller.set_point.status.heating_set_point
         else:
+            _LOGGER.debug("target point !HEAT")
             value = self.controller.set_point.status.cooling_set_point
+        
         return value
 
     @property
@@ -166,30 +173,30 @@ class DaikinMadokaClimate(ClimateEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
+
+        _LOGGER.info("async_set_temperature %s %d %d", self.name, kwargs.get(ATTR_TEMPERATURE), self.controller.set_point.status.cooling_set_point)
+        #_LOGGER.info("set_temperature %d", self.controller.set_point.status.cooling_set_point)
+
         try:
             new_cooling_set_point = self.controller.set_point.status.cooling_set_point
             new_heating_set_point = self.controller.set_point.status.cooling_set_point
-            if (
-                self.controller.operation_mode.status.operation_mode
-                != OperationModeEnum.HEAT
-            ):
+
+            _LOGGER.debug("mode: %d", self.controller.operation_mode.status.operation_mode)
+            if (self.controller.operation_mode.status.operation_mode != OperationModeEnum.HEAT):
+                _LOGGER.debug("!HEAT")
                 new_cooling_set_point = round(kwargs.get(ATTR_TEMPERATURE))
-            if (
-                self.controller.operation_mode.status.operation_mode
-                != OperationModeEnum.COOL
-            ):
+
+            if (self.controller.operation_mode.status.operation_mode != OperationModeEnum.COOL):
+                _LOGGER.debug("!COOL")
                 new_heating_set_point = round(kwargs.get(ATTR_TEMPERATURE))
 
-            await self.controller.set_point.update(
-                SetPointStatus(new_cooling_set_point, new_heating_set_point)
-            )
+            _LOGGER.info("async_set_temperature c:%d h:%d", new_cooling_set_point, new_heating_set_point)
+            await self.controller.set_point.update(SetPointStatus(new_cooling_set_point, new_cooling_set_point))
+
         except ConnectionAbortedError:
             # pylint: disable=logging-not-lazy
-            _LOGGER.warning(
-                "Could not set target temperature on %s. "
-                + "Connection not available, please reload integration to try reenabling.",
-                self.name,
-            )
+            _LOGGER.warning("Could not set target temperature on %s. Connection not available, please reload integration to try reenabling.", self.name)
+
         except ConnectionException:
             pass
 
@@ -198,12 +205,15 @@ class DaikinMadokaClimate(ClimateEntity):
         """Return current operation ie. heat, cool, idle."""
 
         if self.controller.power_state.status is None:
+            _LOGGER_debug("hvac_mode None")
             return None
 
         if self.controller.power_state.status.turn_on is False:
+            _LOGGER_debug("hvac_mode off")
             return HVACMode.OFF
 
         return DAIKIN_TO_HA_MODE.get(
+            #_LOGGER_debug("hvac_mode %d", self.controller.operation_mode.status.operation_mode)
             self.controller.operation_mode.status.operation_mode
         )
 
@@ -236,10 +246,14 @@ class DaikinMadokaClimate(ClimateEntity):
                 self.controller.operation_mode.status.operation_mode
             )
 
+
     async def async_set_hvac_mode(self, hvac_mode):
         """Set HVAC mode."""
+
+        _LOGGER.debug("async_set_hvac_mode %d", hvac_mode)
         try:
             if hvac_mode != HVACMode.OFF:
+                _LOGGER.debug("async_set_hvac_mode off")
                 await self.controller.operation_mode.update(
                     OperationModeStatus(HA_MODE_TO_DAIKIN.get(hvac_mode))
                 )
@@ -302,9 +316,12 @@ class DaikinMadokaClimate(ClimateEntity):
     async def async_update(self):
         """Retrieve latest state."""
 
+        _LOGGER.debug("async_update %s. ", self.name)
         try:
             self.dev_info = await self.controller.read_info()
             await self.controller.update()
+            _LOGGER.debug("target_temp set:%d", self.controller.set_point.status.heating_set_point)
+#            _LOGGER.debug(self.controller.status)
 
         except ConnectionAbortedError:
             # pylint: disable=logging-not-lazy
@@ -314,6 +331,7 @@ class DaikinMadokaClimate(ClimateEntity):
                 self.name,
             )
         except ConnectionException:
+            _LOGGER.warning("update connection exception %s. ", self.name)
             pass
 
     async def async_turn_on(self):
