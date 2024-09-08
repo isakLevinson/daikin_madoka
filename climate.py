@@ -205,11 +205,11 @@ class DaikinMadokaClimate(ClimateEntity):
         """Return current operation ie. heat, cool, idle."""
 
         if self.controller.power_state.status is None:
-            _LOGGER_debug("hvac_mode None")
+            _LOGGER.debug("hvac_mode None")
             return None
 
         if self.controller.power_state.status.turn_on is False:
-            _LOGGER_debug("hvac_mode off")
+            _LOGGER.debug("hvac_mode off")
             return HVACMode.OFF
 
         return DAIKIN_TO_HA_MODE.get(
