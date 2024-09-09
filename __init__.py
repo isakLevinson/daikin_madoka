@@ -15,6 +15,7 @@ from homeassistant.const import (
 )
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import HomeAssistantType
+#from homeassistant.helpers.typing import homeassistant.core.HomeAssistant
 
 from . import config_flow  # noqa: F401
 from .const import CONTROLLERS, DOMAIN
@@ -54,7 +55,9 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
+async def async_setup_entry(hass, entry):
+#async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
+#async def async_setup_entry(hass: homeassistant.core.HomeAssistant, entry: ConfigEntry):
     """Pass conf to all the components."""
 
     controllers = {}
@@ -82,6 +85,8 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     for component in COMPONENT_TYPES:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, component)
+            #hass.config_entries.async_forward_entry_setups(entry, component)
+
         )
 
     return True

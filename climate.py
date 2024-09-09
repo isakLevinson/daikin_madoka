@@ -98,7 +98,7 @@ class DaikinMadokaClimate(ClimateEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
+        return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
 
     @property
     def available(self):
@@ -336,8 +336,10 @@ class DaikinMadokaClimate(ClimateEntity):
 
     async def async_turn_on(self):
         """Turn device on."""
+        _LOGGER.info("turn_on %s", self.name)
         try:
             await self.controller.power_state.update(PowerStateStatus(True))
+
         except ConnectionAbortedError:
             # pylint: disable=logging-not-lazy
             _LOGGER.warning(
@@ -350,6 +352,7 @@ class DaikinMadokaClimate(ClimateEntity):
 
     async def async_turn_off(self):
         """Turn device off."""
+        _LOGGER.info("turn_off %s", self.name)
         try:
             await self.controller.power_state.update(PowerStateStatus(False))
         except ConnectionAbortedError:
