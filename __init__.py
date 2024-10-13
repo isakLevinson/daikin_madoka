@@ -15,7 +15,6 @@ from homeassistant.const import (
 )
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import HomeAssistantType
-#from homeassistant.helpers.typing import homeassistant.core.HomeAssistant
 
 from . import config_flow  # noqa: F401
 from .const import CONTROLLERS, DOMAIN
@@ -56,8 +55,6 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, entry):
-#async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
-#async def async_setup_entry(hass: homeassistant.core.HomeAssistant, entry: ConfigEntry):
     """Pass conf to all the components."""
 
     controllers = {}
@@ -66,28 +63,18 @@ async def async_setup_entry(hass, entry):
             await force_device_disconnect(device)
         controllers[device] = Controller(device, adapter=entry.data[CONF_DEVICE])
 
-    await discover_devices(
-        adapter=entry.data[CONF_DEVICE], timeout=entry.data[CONF_SCAN_INTERVAL]
-    )
+    await discover_devices( adapter=entry.data[CONF_DEVICE], timeout=entry.data[CONF_SCAN_INTERVAL] )
 
     for device, controller in controllers.items():
         try:
             await asyncio.wait_for(controller.start(),timeout=10)
         except ConnectionAbortedError as connection_aborted_error:
-            _LOGGER.error(
-                "Could not connect to device %s: %s",
-                device,
-                str(connection_aborted_error),
-            )
+            _LOGGER.error("Could not connect to device %s: %s", device, str(connection_aborted_error), )
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {CONTROLLERS: controllers}
     for component in COMPONENT_TYPES:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-            #hass.config_entries.async_forward_entry_setups(entry, component)
-
-        )
+        hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, component) )
 
     return True
 

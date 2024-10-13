@@ -72,15 +72,19 @@ DATA = "data"
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Daikin climate based on config_entry."""
 
+    _LOGGER.info("async_setup_entry")
     if entry.entry_id in hass.data[DOMAIN]:
         entities = []
         for controller in hass.data[DOMAIN][entry.entry_id][CONTROLLERS].values():
             try:
                 entity = DaikinMadokaClimate(controller)
                 entities.append(entity)
+                _LOGGER.info("entity.name: %s", entity.name)
                 await entity.controller.update()
+
             except ConnectionAbortedError:
                 pass
+
             except ConnectionException:
                 pass
 
@@ -212,10 +216,7 @@ class DaikinMadokaClimate(ClimateEntity):
             _LOGGER.debug("hvac_mode off")
             return HVACMode.OFF
 
-        return DAIKIN_TO_HA_MODE.get(
-            #_LOGGER_debug("hvac_mode %d", self.controller.operation_mode.status.operation_mode)
-            self.controller.operation_mode.status.operation_mode
-        )
+        return DAIKIN_TO_HA_MODE.get(self.controller.operation_mode.status.operation_mode)
 
     @property
     def hvac_modes(self):
@@ -232,19 +233,14 @@ class DaikinMadokaClimate(ClimateEntity):
         if self.controller.power_state.status.turn_on is False:
             return HVACAction.OFF
 
-        if (
-            self.controller.operation_mode.status.operation_mode
-            == OperationModeEnum.AUTO
-        ):
+        if (self.controller.operation_mode.status.operation_mode == OperationModeEnum.AUTO):
             # pylint: disable=no-else-return
             if self.target_temperature >= self.current_temperature:
                 return HVACAction.HEATING
             else:
                 return HVACAction.COOLING
         else:
-            return DAIKIN_TO_HA_CURRENT_HVAC_MODE.get(
-                self.controller.operation_mode.status.operation_mode
-            )
+            return DAIKIN_TO_HA_CURRENT_HVAC_MODE.get(self.controller.operation_mode.status.operation_mode)
 
 
     async def async_set_hvac_mode(self, hvac_mode):
@@ -254,12 +250,8 @@ class DaikinMadokaClimate(ClimateEntity):
         try:
             if hvac_mode != HVACMode.OFF:
                 _LOGGER.debug("async_set_hvac_mode off")
-                await self.controller.operation_mode.update(
-                    OperationModeStatus(HA_MODE_TO_DAIKIN.get(hvac_mode))
-                )
-            await self.controller.power_state.update(
-                PowerStateStatus(hvac_mode != HVACMode.OFF)
-            )
+                await self.controller.operation_mode.update(OperationModeStatus(HA_MODE_TO_DAIKIN.get(hvac_mode)))
+            await self.controller.power_state.update(PowerStateStatus(hvac_mode != HVACMode.OFF))
 
             self.async_schedule_update_ha_state()
         except ConnectionAbortedError:
@@ -321,7 +313,7 @@ class DaikinMadokaClimate(ClimateEntity):
             self.dev_info = await self.controller.read_info()
             await self.controller.update()
             _LOGGER.debug("target_temp set:%d", self.controller.set_point.status.heating_set_point)
-#            _LOGGER.debug(self.controller.status)
+            self.clean_filter = True
 
         except ConnectionAbortedError:
             # pylint: disable=logging-not-lazy
@@ -330,6 +322,7 @@ class DaikinMadokaClimate(ClimateEntity):
                 + "Connection not available, please reload integration to try reenabling.",
                 self.name,
             )
+
         except ConnectionException:
             _LOGGER.warning("update connection exception %s. ", self.name)
             pass
